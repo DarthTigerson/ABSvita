@@ -3,7 +3,7 @@
 int t_failures, t_checks;
 const char *t_current;
 
-#define SUITES(X) X(suite_timeline) X(suite_mp4) X(suite_strutil) X(suite_abs_json) X(suite_policy) X(suite_utils) X(suite_pipeline) X(suite_net) X(suite_engine)
+#define SUITES(X) X(suite_timeline) X(suite_mp4) X(suite_strutil) X(suite_abs_json) X(suite_policy) X(suite_utils) X(suite_pipeline) X(suite_icons) X(suite_net) X(suite_engine)
 #define DECL(s) void s(void);
 SUITES(DECL)
 

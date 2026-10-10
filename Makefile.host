@@ -4,10 +4,10 @@ CC      ?= cc
 BUILD   := build-host
 CFLAGS  := -DAPP_VERSION=\"0.1.0\" -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
            -fsanitize=address,undefined -fno-omit-frame-pointer \
-           -Isrc -Isrc/core -Isrc/net -I/opt/homebrew/opt/mpg123/include -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
+           -Isrc -Isrc/core -Isrc/net -Isrc/ui -I/opt/homebrew/opt/mpg123/include -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
 LDFLAGS := -fsanitize=address,undefined -lm -lcurl -L/opt/homebrew/opt/mpg123/lib -lmpg123 -lpthread
 
-CORE    := $(wildcard src/core/*.c) $(wildcard src/net/*.c)
+CORE    := $(wildcard src/core/*.c) $(wildcard src/net/*.c) src/ui/icons.c
 VENDOR  := vendor/cjson/cJSON.c vendor/sonic/sonic.c $(wildcard vendor/helix-aac/*.c)
 TESTS   := $(wildcard tests/*.c)
 OBJS    := $(patsubst %.c,$(BUILD)/%.o,$(CORE) $(VENDOR) $(TESTS))
