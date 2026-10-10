@@ -70,6 +70,7 @@ typedef struct {
     long status;
     uint64_t total, received;
     bool aborted;
+    bool ranged_from;   /* asked for bytes from an offset > 0 */
     uint64_t last_data;
 } Xfer;
 
@@ -106,6 +107,7 @@ static size_t on_body(char *p, size_t sz, size_t n, void *ud) {
     x->last_data = now_ms();
     if (x->sink) {
         if (x->status < 200 || x->status >= 300) return len; /* error page: discard */
+        if (x->ranged_from && x->status == 200) return 0;     /* Range ignored: these aren't our bytes */
         if (x->sink(x->ud, (const uint8_t *)p, (uint32_t)len) < 0) { x->aborted = true; return 0; }
         x->received += len;
         x->last_data = now_ms(); /* time spent blocked in the sink is not a stall */
@@ -243,6 +245,7 @@ int http_get_range(HttpConn *conn, const char *url, const char *const *headers, 
     struct curl_slist *hl = header_list(headers);
     setup(h, &x, url, hl);
     char range[64];
+    x.ranged_from = from > 0;
     if (from || to) {
         if (to) snprintf(range, sizeof range, "%llu-%llu", (unsigned long long)from, (unsigned long long)to);
         else snprintf(range, sizeof range, "%llu-", (unsigned long long)from);
@@ -257,6 +260,10 @@ int http_get_range(HttpConn *conn, const char *url, const char *const *headers, 
     res->total = x.total;
     res->received = x.received;
     res->aborted = x.aborted;
+    if (x.ranged_from && status == 200) {
+        snprintf(res->err, sizeof res->err, "server ignored Range");
+        return -1;
+    }
     if (rc != CURLE_OK) {
         if (!x.aborted) describe(rc, res->err, sizeof res->err);
         return -1;

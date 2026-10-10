@@ -50,7 +50,8 @@ typedef struct {
 
 /* GET url with "Range: bytes=from-to" (to == 0: open-ended; from == 0 && to == 0:
  * no Range header). conn may be NULL. Returns 0 when the transfer completed
- * (check res->status), <0 on transport error or abort. */
+ * (check res->status), <0 on transport error or abort. When from > 0 and the server
+ * ignores the Range (200), no body is delivered and it returns -1 with status 200. */
 int http_get_range(HttpConn *conn, const char *url, const char *const *headers, uint64_t from, uint64_t to,
                    HttpSink sink, HttpAbort abort_cb, void *ud, HttpRangeResult *res);
 

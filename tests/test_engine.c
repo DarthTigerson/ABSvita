@@ -174,6 +174,7 @@ void suite_engine(void) {
     RUN(player_open_skip_sync);
     worker_destroy(g_api);
     worker_destroy(g_sync);
+    g_api = g_sync = NULL;
     engine_exit();
     free(g_pb.tracks);
     free(g_pb.sources);

@@ -9,6 +9,7 @@
 #include "test.h"
 
 static Config g_cfg;
+Config *test_abs_cfg = &g_cfg; /* for other suites that need to repoint the client */
 static const char *g_media = "tests/media";
 
 static void post(const char *path) {

@@ -6,6 +6,7 @@
 
 #include "abs_client.h"
 #include "dbg.h"
+#include "downloads.h"
 #include "engine.h"
 #include "httpsrc.h"
 #include "osal.h"
@@ -24,7 +25,8 @@ static struct {
     char error[96];
     BookDetail book;        /* owned, valid when has_book */
     bool has_book;
-    char session[48];       /* ABS play session id */
+    bool local;             /* playing a download */
+    char session[48];       /* ABS play session id ("" while offline) */
     SyncPolicy sync;
     SleepTimer sleep;
     float speed;
@@ -48,9 +50,12 @@ typedef struct {
     BookDetail book;
     char session[48];
     double start;
+    bool local;
 } OpenResult;
 
 static OpenResult *g_open_result;
+/* a session that arrives after a download started playing */
+static struct { int gen; char id[48]; bool ready; } g_late_session;
 
 static double resume_position(const char *id, double server_t, uint64_t server_updated) {
     mutex_lock(&P.lock);
@@ -68,6 +73,28 @@ static void open_job(void *ud) {
     r->gen = j->gen;
     const char *id = j->hint.id;
     PlaySession s;
+    if (dl_is_done(id) && dl_load_meta(id, &r->book) == 0) {
+        /* downloaded: play from the memory card at once; the session (for syncing) follows if reachable */
+        r->local = true;
+        r->start = j->start >= 0 ? j->start : resume_position(id, j->hint.current_time, j->hint.progress_updated);
+        if (r->book.duration > 0 && r->start > r->book.duration - 5) r->start = 0;
+        int gen = r->gen;
+        dbg("play %s from the memory card at %.0f", id, r->start);
+        mutex_lock(&P.lock);
+        if (g_open_result) { book_detail_free(&g_open_result->book); free(g_open_result); }
+        g_open_result = r;
+        mutex_unlock(&P.lock);
+        if (absc_have_session() && absc_play(id, g_model, &s) == ABS_OK) {
+            mutex_lock(&P.lock);
+            g_late_session.gen = gen;
+            str_copy(g_late_session.id, sizeof g_late_session.id, s.id);
+            g_late_session.ready = true;
+            mutex_unlock(&P.lock);
+            book_detail_free(&s.book);
+        }
+        free(j);
+        return;
+    }
     int prc = absc_have_session() ? absc_play(id, g_model, &s) : ABS_ERR_AUTH;
     dbg("play %s -> %d", id, prc);
     if (prc == ABS_OK) {
@@ -119,6 +146,15 @@ void player_open(const BookSummary *b, double start) {
     }
 }
 
+static void take_late_session(void) {
+    mutex_lock(&P.lock);
+    if (g_late_session.ready && !g_open_result) {
+        g_late_session.ready = false;
+        if (g_late_session.gen == P.open_gen && P.has_book) str_copy(P.session, sizeof P.session, g_late_session.id);
+    }
+    mutex_unlock(&P.lock);
+}
+
 static void take_open_result(void) {
     mutex_lock(&P.lock);
     OpenResult *r = g_open_result;
@@ -143,6 +179,7 @@ static void take_open_result(void) {
     if (P.has_book) book_detail_free(&P.book);
     P.book = r->book;
     P.has_book = true;
+    P.local = r->local;
     str_copy(P.session, sizeof P.session, r->session);
     sync_init(&P.sync, g_cfg->sync_interval);
     sleep_set(&P.sleep, SLEEP_OFF, 0, 0);
@@ -161,7 +198,9 @@ static void take_open_result(void) {
         s->size = t->size;
         str_copy(s->ext, sizeof s->ext, t->ext);
         str_copy(s->codec, sizeof s->codec, t->codec);
-        absc_url(t->content_url, s->url, sizeof s->url);
+        s->local = r->local;
+        if (r->local) dl_track_path(r->book.id, i, t->ext, s->path, sizeof s->path);
+        else absc_url(t->content_url, s->url, sizeof s->url);
     }
     engine_set_speed(P.speed);
     engine_load(&pb, r->start, true);
@@ -273,6 +312,7 @@ const char *player_error(void) { return P.error; }
 bool player_has_book(void) { return P.has_book && P.phase == PL_READY; }
 const BookDetail *player_book(void) { return P.has_book ? &P.book : NULL; }
 const char *player_book_id(void) { return P.has_book ? P.book.id : ""; }
+bool player_is_local(void) { return P.has_book && P.local; }
 bool player_playing(void) { return P.has_book && engine_is_playing(); }
 double player_position(void) { return engine_position(); }
 double player_duration(void) { return P.has_book ? P.book.duration : 0; }
@@ -373,6 +413,7 @@ const char *player_status(void) {
 
 void player_tick(double dt) {
     take_open_result();
+    take_late_session();
     if (!P.has_book || P.phase != PL_READY) return;
     bool playing = engine_is_playing();
     double pos = engine_position();

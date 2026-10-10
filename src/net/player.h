@@ -23,6 +23,7 @@ const char *player_error(void);
 bool player_has_book(void);
 const BookDetail *player_book(void);
 const char *player_book_id(void);
+bool player_is_local(void);   /* playing a downloaded copy */
 
 void player_toggle(void);
 void player_pause(void);
