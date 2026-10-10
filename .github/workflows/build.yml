@@ -1,0 +1,65 @@
+name: Build
+
+# Every push/PR: run the host tests (core + network pipeline against the mock
+# server) and build the VPK. Pushing a tag like v1.2.3 also publishes a GitHub
+# release with ABSvita.vpk, versioned from the tag.
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install test dependencies
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg libcurl4-openssl-dev libmpg123-dev pkg-config
+      - name: Cache generated test books
+        uses: actions/cache@v4
+        with:
+          path: tests/media
+          key: media-${{ hashFiles('tools/gen_media.sh') }}
+      - name: Host tests (core, audio pipeline, network, engine)
+        run: make -f Makefile.host nettest
+
+  build:
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+      - name: Version
+        id: ver
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "version=${GITHUB_REF_NAME#v}" >> "$GITHUB_OUTPUT"
+          else
+            echo "version=0.0.0" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build toolchain image (VitaSDK + libcurl/mbedTLS)
+        run: docker build -t absvita-build docker
+      - name: Build VPK
+        run: |
+          docker run --rm -v "$PWD":/src -w /src absvita-build sh -c \
+            'cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DAPP_VERSION=${{ steps.ver.outputs.version }} && cmake --build build -j"$(nproc)"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ABSvita-${{ steps.ver.outputs.version }}
+          path: build/ABSvita.vpk
+      - name: Publish release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/ABSvita.vpk
+          generate_release_notes: true
+          body: |
+            ## Install
+            In **VitaShell**, press **Left + ○** to open the QR scanner and scan this code (it always points at the latest release). VitaShell downloads `ABSvita.vpk` and offers to install it.
+
+            ![VitaShell QR code](https://raw.githubusercontent.com/${{ github.repository }}/main/assets/qr-vitashell.png)
+
+            Or copy `ABSvita.vpk` to your Vita (FTP or USB) and install it from VitaShell.
