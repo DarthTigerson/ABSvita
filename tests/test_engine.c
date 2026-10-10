@@ -104,7 +104,9 @@ TEST(seek_and_end) {
     wait_pos(1, 8000);
     engine_seek(g_pb.duration - 20);
     sleep_ms(50);
-    CHECK_NEAR(engine_position(), g_pb.duration - 20, 1.0);
+    /* landed at the target; the 20x null sink may already have played a little past it */
+    double at = engine_position();
+    CHECK(at >= g_pb.duration - 20.2 && at < g_pb.duration - 17);
     uint64_t end = now_ms() + 10000;
     while (now_ms() < end && engine_state() != ENG_ENDED) sleep_ms(10);
     CHECK_EQ_INT(engine_state(), ENG_ENDED);
