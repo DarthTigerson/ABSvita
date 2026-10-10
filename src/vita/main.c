@@ -1,4 +1,5 @@
 /* ABSvita entry point: Vita setup, the frame loop, shutdown. */
+#include <psp2/io/devctl.h>
 #include <psp2/kernel/processmgr.h>
 #include <psp2/rtc.h>
 #include <stdio.h>
@@ -10,6 +11,7 @@
 #include "app.h"
 #include "covers.h"
 #include "dbg.h"
+#include "downloads.h"
 #include "engine.h"
 #include "http.h"
 #include "ime.h"
@@ -37,6 +39,15 @@ void app_save_config(void) {
     long long off = http_clock_offset(&known);
     if (known) { g_cfg.clock_offset_ms = off; g_cfg.clock_known = true; }
     cfg_save(&g_cfg, DATA "/config.json");
+}
+
+/* free space on ux0: (sceIoDevctl 0x3001, as VitaShell does) */
+static int64_t ux0_free(const char *dir) {
+    (void)dir;
+    struct { uint64_t max_size, free_size; uint32_t cluster_size; void *unk; } info;
+    memset(&info, 0, sizeof info);
+    if (sceIoDevctl("ux0:", 0x3001, NULL, 0, &info, sizeof info) < 0) return -1;
+    return (int64_t)info.free_size;
 }
 
 static void save_queue(void) { pq_save(&g_pq, DATA "/progress_queue.json"); }
@@ -71,6 +82,7 @@ int main(void) {
     g_sync = worker_create("sync", 128);
     g_covers = worker_create("covers", 256);
     if (engine_init(&vita_sink, absc_stream_auth) != 0) dbg("engine_init failed");
+    dl_init(DATA "/books", ux0_free);
     player_init(&g_cfg, &g_pq, save_queue, sys_model());
     lib_init();
 
@@ -103,7 +115,7 @@ int main(void) {
         vita2d_end_drawing();
         vita2d_common_dialog_update();
         vita2d_swap_buffers();
-        sys_tick(player_playing());
+        sys_tick(player_playing() || dl_busy()); /* stay awake while listening or downloading */
     }
 
     /* not reached: the system ends the app */

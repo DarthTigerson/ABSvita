@@ -41,8 +41,8 @@ static float g_tap_x, g_tap_y;
 float app_tap_x(void) { return g_tap_x; }
 float app_tap_y(void) { return g_tap_y; }
 
-static const char *kSectionName[SEC_COUNT] = {"Home", "Library", "Series", "Authors", "Search", "Settings"};
-static const int kSectionIcon[SEC_COUNT] = {IC_HOME, IC_BOOK, IC_SERIES, IC_USER, IC_SEARCH, IC_GEAR};
+static const char *kSectionName[SEC_COUNT] = {"Home", "Library", "Series", "Authors", "Search", "Downloads", "Settings"};
+static const int kSectionIcon[SEC_COUNT] = {IC_HOME, IC_BOOK, IC_SERIES, IC_USER, IC_SEARCH, IC_DOWNLOAD, IC_GEAR};
 
 /* ---- helpers ------------------------------------------------------------------- */
 
@@ -162,6 +162,7 @@ static View *section_root(Section s) {
     case SEC_SERIES: return view_groups_new(GROUP_SERIES);
     case SEC_AUTHORS: return view_groups_new(GROUP_AUTHOR);
     case SEC_SEARCH: return view_search_new(false);
+    case SEC_DOWNLOADS: return view_downloads_new();
     case SEC_SETTINGS: return view_settings_new();
     default: return view_home_new();
     }
@@ -179,7 +180,8 @@ void app_set_section(Section s, bool focus_content) {
     A.sidebar_focus = !focus_content;
 }
 
-void app_open_book(int lib_index) { app_push(view_book_new(lib_index)); }
+void app_open_book(int lib_index) { app_push(view_book_new(lib_book(lib_index))); }
+void app_open_book_summary(const BookSummary *b) { app_push(view_book_new(b)); }
 
 void app_play(const BookSummary *b, double start) {
     player_open(b, start);
@@ -217,11 +219,11 @@ void app_init(void) {
 
 /* ---- sidebar -------------------------------------------------------------------- */
 
-#define SB_Y0 84
-#define SB_ITEM_H 48
-#define SB_GAP 6
-#define MINI_Y 404
-#define MINI_H 92
+#define SB_Y0 76
+#define SB_ITEM_H 44
+#define SB_GAP 4
+#define MINI_Y 416
+#define MINI_H 80
 
 static float sb_item_y(int i) { return SB_Y0 + i * (SB_ITEM_H + SB_GAP); }
 
@@ -254,27 +256,28 @@ static void mini_player_draw(bool focused) {
     float x = 12, y = MINI_Y, w = SIDEBAR_W - 24, h = MINI_H;
     gfx_rrect(x, y, w, h, 12, C_PANEL2);
     if (focused) draw_focus_ring(x, y, w, h, 12);
-    covers_draw(b->id, x + 12, y + 12, 52, 1);
+    covers_draw(b->id, x + 10, y + 10, 48, 1);
     char line[160];
-    float tx = x + 76, tw = w - 76 - 12;
+    float tx = x + 68, tw = w - 68 - 10;
     gfx_fit(F_BOLD, 14, b->title, tw, line, sizeof line);
-    gfx_text(F_BOLD, 14, tx, y + 16, C_TEXT, line);
+    gfx_text(F_BOLD, 14, tx, y + 12, C_TEXT, line);
     const char *st = player_status();
     gfx_fit(F_REG, 13, st ? st : b->author, tw, line, sizeof line);
-    gfx_text(F_REG, 13, tx, y + 37, st ? C_ACCENT : C_SUB, line);
-    gfx_icon(player_playing() ? IC_PAUSE : IC_PLAY, tx + 9, y + 62, 16, C_TEXT);
+    gfx_text(F_REG, 13, tx, y + 31, st ? C_ACCENT : C_SUB, line);
+    gfx_icon(player_playing() ? IC_PAUSE : IC_PLAY, tx + 7, y + 55, 14, C_TEXT);
     char t[32];
     fmt_time(player_position(), t, sizeof t);
-    gfx_text_vc(F_REG, 13, tx + 24, y + 62, C_SUB, t);
+    gfx_text_vc(F_REG, 13, tx + 20, y + 55, C_SUB, t);
+    if (player_is_local()) gfx_icon(IC_DOWNLOAD, x + w - 18, y + 55, 14, C_ACCENT);
     double d = player_duration();
-    draw_progress_bar(x + 12, y + h - 12, w - 24, 4, d > 0 ? (float)(player_position() / d) : 0, C_ACCENT, C_LINE);
+    draw_progress_bar(x + 10, y + h - 10, w - 20, 4, d > 0 ? (float)(player_position() / d) : 0, C_ACCENT, C_LINE);
     hit_add(x, y, w, h, on_sidebar_tap, SEC_COUNT, 0);
 }
 
 static void sidebar_draw(float dt) {
     gfx_rect(0, 0, SIDEBAR_W, CONTENT_BOTTOM, C_PANEL);
-    gfx_icon(IC_BOOK, 36, 44, 28, C_ACCENT);
-    gfx_text_vc(F_BOLD, 24, 60, 44, C_TEXT, "ABSvita");
+    gfx_icon(IC_BOOK, 36, 38, 28, C_ACCENT);
+    gfx_text_vc(F_BOLD, 24, 60, 38, C_TEXT, "ABSvita");
     float target = A.section;
     A.sb_anim += (target - A.sb_anim) * (1 - expf(-dt * 16));
     float hy = SB_Y0 + A.sb_anim * (SB_ITEM_H + SB_GAP);

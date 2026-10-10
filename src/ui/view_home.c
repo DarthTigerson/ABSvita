@@ -3,6 +3,8 @@
 #include <stdlib.h>
 
 #include "covers.h"
+#include "downloads.h"
+#include <string.h>
 #include "libmodel.h"
 #include "strutil.h"
 #include "views.h"
@@ -19,6 +21,35 @@ typedef struct {
 } Home;
 
 static Home *g_home;
+
+/* Offline (no library) but with finished downloads: Home lists those instead. */
+#define MAX_OFF 32
+static DlInfo g_off[MAX_OFF];
+static int offline_downloads(void) {
+    if (lib_count() > 0 || lib_state() == LIB_LOADING || lib_state() == LIB_EMPTY) return 0;
+    DlInfo all[128];
+    int n = dl_list(all, 128), k = 0;
+    for (int i = 0; i < n && k < MAX_OFF; i++)
+        if (all[i].state == DL_DONE) g_off[k++] = all[i];
+    return k;
+}
+
+static void off_summary(int i, BookSummary *b) {
+    memset(b, 0, sizeof *b);
+    str_copy(b->id, sizeof b->id, g_off[i].id);
+    str_copy(b->title, sizeof b->title, g_off[i].title);
+    str_copy(b->author, sizeof b->author, g_off[i].author);
+    b->duration = g_off[i].duration;
+}
+
+static void on_tap_offline(int i, int b) {
+    (void)b;
+    if (!g_home || i >= offline_downloads()) return;
+    g_home->col[0] = i;
+    BookSummary s;
+    off_summary(i, &s);
+    app_play(&s, -1);
+}
 
 static void rows(int *nc, int *nr, const int **c, const int **r) {
     *c = lib_continue(nc);
@@ -38,6 +69,22 @@ static void on_tap(int row, int col) {
 
 static void home_update(View *v, const Input *in, float dt) {
     Home *h = v->data;
+    int noff = offline_downloads();
+    if (noff) {
+        scroll_step(&h->sx[0], dt);
+        int *col = &h->col[0];
+        if (*col >= noff) *col = noff - 1;
+        if (in->repeat & B_LEFT) { if (*col == 0) { app_focus_sidebar(); return; } (*col)--; }
+        if (in->repeat & B_RIGHT && *col + 1 < noff) (*col)++;
+        if (in->down & B_BACK) { app_focus_sidebar(); return; }
+        if (in->down & B_SELECT) lib_refresh();
+        BookSummary b;
+        off_summary(*col, &b);
+        if (in->down & (B_OK | B_SQUARE)) app_play(&b, -1);
+        float max = noff * CONT_W - CW;
+        scroll_show(&h->sx[0], *col * CONT_W - (*col ? 40 : 0), (*col + 1) * CONT_W + 40, CW, max > 0 ? max : 0);
+        return;
+    }
     int nc, nr;
     const int *c, *r;
     rows(&nc, &nr, &c, &r);
@@ -76,6 +123,44 @@ static void home_draw(View *v, bool focused) {
     const int *c, *r;
     rows(&nc, &nr, &c, &r);
     float cx = CX + CW / 2, cy = CONTENT_BOTTOM / 2;
+    int noff = offline_downloads();
+    if (noff) {
+        gfx_text(F_BOLD, 30, CX, 26, C_TEXT, "Home");
+        float by = 76;
+        gfx_rrect(CX, by, CW, 44, 12, gfx_alpha(C_ERROR, 0.14f));
+        gfx_icon(IC_CLOUD_OFF, CX + 26, by + 22, 18, C_ERROR);
+        gfx_text_vc(F_BOLD, 15, CX + 48, by + 22, C_TEXT, "Can't reach your server");
+        gfx_text_vc(F_REG, 15, CX + 48 + gfx_text_w(F_BOLD, 15, "Can't reach your server") + 10, by + 22, C_SUB,
+                    "Â· your downloads still play");
+        float y = 146;
+        gfx_text(F_BOLD, 21, CX, y, C_TEXT, "Your downloads");
+        y += 34;
+        clip_content(0);
+        for (int i = 0; i < noff; i++) {
+            float x = CX + i * CONT_W - h->sx[0].y;
+            if (x > SCREEN_W || x + CONT_W < CX - 40) continue;
+            bool foc = focused && h->col[0] == i;
+            covers_draw(g_off[i].id, x, y, CONT_COVER, 1);
+            if (foc) {
+                draw_focus_ring(x, y, CONT_COVER, CONT_COVER, 2);
+                gfx_circle(x + CONT_COVER / 2, y + CONT_COVER / 2, 28, gfx_alpha(0xFF000000, 0.6f));
+                gfx_icon(IC_PLAY, x + CONT_COVER / 2, y + CONT_COVER / 2, 26, C_TEXT);
+            }
+            char line[200];
+            gfx_fit(F_BOLD, 15, g_off[i].title, CONT_COVER, line, sizeof line);
+            gfx_text(F_BOLD, 15, x, y + CONT_COVER + 10, C_TEXT, line);
+            gfx_fit(F_REG, 14, g_off[i].author, CONT_COVER, line, sizeof line);
+            gfx_text(F_REG, 14, x, y + CONT_COVER + 32, C_SUB, line);
+            hit_add(x, y, CONT_COVER, CONT_COVER + 50, on_tap_offline, i, 0);
+        }
+        clip_off();
+        if (focused) {
+            hint(G_DPAD, "Move");
+            hint(g_ok(), "Play");
+            hint(G_SELECT, "Retry server");
+        }
+        return;
+    }
     if (!nc && !nr) {
         LibState st = lib_state();
         if (st == LIB_ERROR) {

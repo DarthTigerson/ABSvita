@@ -11,7 +11,8 @@ View *view_groups_new(GroupKind kind);
 View *view_books_new(const char *title, const char *subtitle, const int *idx, int n, bool numbered, const double *seq);
 View *view_search_new(bool open_keyboard);
 View *view_settings_new(void);
-View *view_book_new(int lib_index);
+View *view_book_new(const BookSummary *b); /* copied */
+View *view_downloads_new(void);
 
 /* Now Playing (full screen) */
 void player_screen_enter(void);

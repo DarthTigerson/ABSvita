@@ -16,7 +16,7 @@
 #define HINT_H 40
 #define CONTENT_BOTTOM (SCREEN_H - HINT_H)
 
-typedef enum { SEC_HOME, SEC_LIBRARY, SEC_SERIES, SEC_AUTHORS, SEC_SEARCH, SEC_SETTINGS, SEC_COUNT } Section;
+typedef enum { SEC_HOME, SEC_LIBRARY, SEC_SERIES, SEC_AUTHORS, SEC_SEARCH, SEC_DOWNLOADS, SEC_SETTINGS, SEC_COUNT } Section;
 
 typedef struct View View;
 struct View {
@@ -42,6 +42,7 @@ void app_pop(void);
 void app_focus_sidebar(void);
 void app_set_section(Section s, bool focus_content);
 void app_open_book(int lib_index);
+void app_open_book_summary(const BookSummary *b); /* e.g. a download while offline */
 void app_play(const BookSummary *b, double start); /* start < 0: resume */
 void app_open_player(void);
 void app_close_player(void);

@@ -143,7 +143,7 @@ static void scan(void) {
         Entry *e = add(b.id[0] ? b.id : de->d_name);
         if (!e) { book_detail_free(&b); break; }
         fill_info(e, &b);
-        char p[300];
+        char p[512];
         snprintf(p, sizeof p, "%s/%s/.done", g_dir, de->d_name);
         e->info.state = exists(p) ? DL_DONE : DL_PAUSED;
         for (int i = 0; i < b.ntracks; i++) e->info.done_bytes += track_bytes(e->info.id, &b.tracks[i], i);
@@ -391,7 +391,7 @@ static void rm_tree(const char *dir) {
         struct dirent *de;
         while ((de = readdir(d))) {
             if (!strcmp(de->d_name, ".") || !strcmp(de->d_name, "..")) continue;
-            char p[400];
+            char p[600];
             snprintf(p, sizeof p, "%s/%s", dir, de->d_name);
             remove(p);
         }
