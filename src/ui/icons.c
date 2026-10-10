@@ -181,6 +181,16 @@ static float icon_sdf(int id, V p) {
         V lean[4] = {{0.2f, -0.36f}, {0.44f, -0.44f}, {0.72f, 0.5f}, {0.48f, 0.58f}};
         return uni(d, sd_poly(p, lean, 4) - 0.02f);
     }
+    case IC_PS_CIRCLE:
+        return outline(sd_circle(p, (V){0, 0}, 0.5f), W);
+    case IC_PS_SQUARE:
+        return outline(sd_box(p, (V){0, 0}, (V){0.46f, 0.46f}, 0.04f), W);
+    case IC_PS_TRIANGLE: {
+        V t[3] = {{0, -0.52f}, {0.56f, 0.44f}, {-0.56f, 0.44f}};
+        return outline(sd_poly(p, t, 3), W);
+    }
+    case IC_PS_CROSS:
+        return uni(sd_seg(p, (V){-0.48f, -0.48f}, (V){0.48f, 0.48f}, W), sd_seg(p, (V){0.48f, -0.48f}, (V){-0.48f, 0.48f}, W));
     case IC_HOME: {
         V roof[3] = {{-0.66f, -0.02f}, {0, -0.62f}, {0.66f, -0.02f}};
         float d = uni(sd_poly(p, roof, 3), sd_box(p, (V){0, 0.3f}, (V){0.46f, 0.34f}, 0.04f));
