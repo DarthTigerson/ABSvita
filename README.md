@@ -22,15 +22,11 @@ battery; audio keeps going and any button wakes the screen.
 
 You need a Vita with HENkaku/Ensō and [VitaShell](https://github.com/TheOfficialFloW/VitaShell).
 
-**QR code (easiest):** in VitaShell press **Left + ○** to open the QR scanner and scan
-this code. It always points at the latest release; VitaShell downloads `ABSvita.vpk` and
-offers to install it.
-
-![VitaShell QR code](assets/qr-vitashell.png)
-
-**Manually:** download `ABSvita.vpk` from the
-[latest release](https://github.com/DarthTigerson/ABSvita/releases/latest), copy it to
-your Vita (VitaShell's FTP or USB mode), select it in VitaShell and install.
+1. Download `ABSvita.vpk` from the [latest release](https://github.com/DarthTigerson/ABSvita/releases/latest)
+   on your computer. (The Vita itself can't open GitHub: its built-in certificates are too old.)
+2. In VitaShell press **SELECT** to start the FTP server, and copy the file to `ux0:` (for
+   example `ux0:downloads/`) with any FTP client. USB mode works too.
+3. In VitaShell, select `ABSvita.vpk` and install it.
 
 ## Sign in
 

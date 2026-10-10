@@ -58,8 +58,4 @@ jobs:
           generate_release_notes: true
           body: |
             ## Install
-            In **VitaShell**, press **Left + ○** to open the QR scanner and scan this code (it always points at the latest release). VitaShell downloads `ABSvita.vpk` and offers to install it.
-
-            ![VitaShell QR code](https://raw.githubusercontent.com/${{ github.repository }}/main/assets/qr-vitashell.png)
-
-            Or copy `ABSvita.vpk` to your Vita (FTP or USB) and install it from VitaShell.
+            Download `ABSvita.vpk` below on your computer, copy it to your Vita with VitaShell's FTP server (SELECT) or USB mode, then select it in VitaShell and install. (The Vita can't open GitHub itself: its built-in certificates are too old.)
