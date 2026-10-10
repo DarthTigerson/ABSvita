@@ -7,6 +7,8 @@
 #include <vita2d.h>
 
 #include "covers.h"
+#include "downloads.h"
+#include "libmodel.h"
 #include "engine.h"
 #include "player.h"
 #include "strutil.h"
@@ -25,7 +27,7 @@
 #define PILL_H 42.0f
 
 enum { K_BACK, K_PREV, K_PLAY, K_NEXT, K_FWD };
-enum { P_SPEED, P_SLEEP, P_CHAPTERS, P_SCREEN };
+enum { P_SPEED, P_SLEEP, P_CHAPTERS, P_DOWNLOAD, P_INFO, P_COUNT };
 
 static struct {
     int row, col[2];
@@ -70,7 +72,32 @@ static void do_pill(int p) {
     case P_SPEED: player_cycle_speed(); app_save_config(); break;
     case P_SLEEP: player_cycle_sleep(); break;
     case P_CHAPTERS: open_chapters(); break;
-    case P_SCREEN: screen_off(); break;
+    case P_DOWNLOAD: {
+        const BookDetail *b = player_book();
+        if (!b) break;
+        DlState st = dl_state(b->id, NULL);
+        if (st == DL_QUEUED || st == DL_ACTIVE) dl_pause(b->id);
+        else if (st == DL_DONE) app_toast("Saved on the memory card");
+        else if (dl_start(b->id) != 0) app_toast("Couldn't start the download");
+        break;
+    }
+    case P_INFO: {
+        const BookDetail *b = player_book();
+        if (!b) break;
+        BookSummary sm;
+        int i = lib_find_id(b->id);
+        if (i >= 0) sm = *lib_book(i);
+        else {
+            memset(&sm, 0, sizeof sm);
+            str_copy(sm.id, sizeof sm.id, b->id);
+            str_copy(sm.title, sizeof sm.title, b->title);
+            str_copy(sm.author, sizeof sm.author, b->author);
+            sm.duration = b->duration;
+        }
+        app_close_player();
+        app_open_book_summary(&sm);
+        break;
+    }
     }
 }
 
@@ -141,11 +168,12 @@ void player_screen_update(const Input *in, float dt) {
     if (in->repeat & B_R) player_skip(g_cfg.skip_fwd);
     if (in->down & B_TRIANGLE) open_chapters();
     if (in->down & B_SELECT) screen_off();
-    int n = S.row == 0 ? 5 : 4;
+    int n = S.row == 0 ? 5 : P_COUNT;
     if (in->repeat & B_LEFT && S.col[S.row] > 0) S.col[S.row]--;
     if (in->repeat & B_RIGHT && S.col[S.row] + 1 < n) S.col[S.row]++;
-    if (in->repeat & B_DOWN && S.row == 0) { S.row = 1; S.col[1] = S.col[0] * 4 / 5; }
-    if (in->repeat & B_UP && S.row == 1) { S.row = 0; S.col[0] = S.col[1] * 5 / 4 + (S.col[1] >= 2); if (S.col[0] > 4) S.col[0] = 4; }
+    /* both rows have five items: up/down keep the column */
+    if (in->repeat & B_DOWN && S.row == 0) { S.row = 1; S.col[1] = S.col[0]; }
+    if (in->repeat & B_UP && S.row == 1) { S.row = 0; S.col[0] = S.col[1]; }
     if (in->down & B_OK) {
         if (S.row == 0) do_control(S.col[0]);
         else do_pill(S.col[1]);
@@ -173,6 +201,23 @@ static void pill(int p, float x, float w, int icon, const char *label, bool acti
     gfx_icon(icon, sx + iw / 2, PILL_Y + PILL_H / 2, iw, c);
     gfx_text_vc(F_BOLD, 15, sx + iw + gap, PILL_Y + PILL_H / 2, c, label);
     hit_add(x, PILL_Y, w, PILL_H, on_tap, 1, p);
+}
+
+/* round icon-only option; fill: progress shown rising from the bottom (<0: none) */
+static void icon_button(int p, float x, int icon, uint32_t c, float fill) {
+    float r = PILL_H / 2, cx = x + r, cy = PILL_Y + r;
+    bool foc = S.row == 1 && S.col[1] == p && !S.chapters;
+    gfx_circle(cx, cy, r, gfx_alpha(C_PANEL2, 0.9f));
+    if (fill > 0) {
+        float f = fill > 1 ? 1 : fill;
+        vita2d_enable_clipping();
+        vita2d_set_clip_rectangle((int)(cx - r), (int)(cy + r - 2 * r * f), (int)(cx + r), (int)(cy + r));
+        gfx_circle(cx, cy, r, gfx_alpha(C_ACCENT, 0.35f));
+        vita2d_disable_clipping();
+    }
+    if (foc) gfx_ring(cx - r, cy - r, 2 * r, 2 * r, r, 3, C_ACCENT);
+    gfx_icon(icon, cx, cy, 20, c);
+    hit_add(cx - r, cy - r, 2 * r, 2 * r, on_tap, 1, p);
 }
 
 static void draw_chapters(void) {
@@ -290,21 +335,35 @@ void player_screen_draw(void) {
     control(K_NEXT, cx + 96, 30, IC_NEXT, NULL);
     control(K_FWD, cx + 192, 30, IC_FWD, nf);
 
-    /* options */
-    float pw = (RW - 3 * 12) / 4;
+    /* options: three pills, then download and book-details icons */
+    float ib = PILL_H, gap = 12;
+    float pw = (RW - 2 * ib - 4 * gap) / 3;
     char sp[16], sl[32];
     snprintf(sp, sizeof sp, "%g\xC3\x97", player_speed());
     const SleepTimer *slp = player_sleep();
     player_sleep_label(sl, sizeof sl);
     if (slp->mode == SLEEP_END_CHAPTER) str_copy(sl, sizeof sl, "Chapter end");
     pill(P_SPEED, RX, pw, IC_SPEED, sp, player_speed() < 0.99f || player_speed() > 1.01f);
-    pill(P_SLEEP, RX + (pw + 12), pw, IC_MOON, slp->mode == SLEEP_OFF ? "Sleep" : sl, slp->mode != SLEEP_OFF);
-    pill(P_CHAPTERS, RX + 2 * (pw + 12), pw, IC_LIST, "Chapters", false);
-    pill(P_SCREEN, RX + 3 * (pw + 12), pw, IC_SCREEN, "Screen off", false);
+    pill(P_SLEEP, RX + (pw + gap), pw, IC_MOON, slp->mode == SLEEP_OFF ? "Sleep" : sl, slp->mode != SLEEP_OFF);
+    pill(P_CHAPTERS, RX + 2 * (pw + gap), pw, IC_LIST, "Chapters", false);
+    float dfrac = 0;
+    DlState ds = dl_state(b->id, &dfrac);
+    int dl_icon = ds == DL_DONE ? IC_CHECK : ds == DL_QUEUED ? IC_CLOCK : ds == DL_ACTIVE ? IC_PAUSE : IC_DOWNLOAD;
+    uint32_t dl_c = ds == DL_DONE ? C_ACCENT : ds == DL_FAILED ? C_ERROR : C_TEXT;
+    icon_button(P_DOWNLOAD, RX + 3 * (pw + gap), dl_icon, dl_c, ds == DL_ACTIVE || ds == DL_PAUSED ? dfrac : -1);
+    icon_button(P_INFO, RX + 3 * (pw + gap) + ib + gap, IC_INFO, C_TEXT, -1);
 
     if (S.chapters) {
         draw_chapters();
         return;
+    }
+    if (S.row == 1 && S.col[1] == P_DOWNLOAD) {
+        static char t[40];
+        snprintf(t, sizeof t, ds == DL_NONE ? "Download" : ds == DL_ACTIVE ? "Pause download (%d%%)" :
+                 ds == DL_QUEUED ? "Pause download" : ds == DL_DONE ? "Saved" : "Resume download", (int)(dfrac * 100));
+        hint(g_ok(), t);
+    } else if (S.row == 1 && S.col[1] == P_INFO) {
+        hint(g_ok(), "Book details");
     }
     hint(G_SQUARE, player_playing() ? "Pause" : "Play");
     hint(G_L, "Skip");

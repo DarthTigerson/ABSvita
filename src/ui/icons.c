@@ -191,6 +191,11 @@ static float icon_sdf(int id, V p) {
     }
     case IC_PS_CROSS:
         return uni(sd_seg(p, (V){-0.48f, -0.48f}, (V){0.48f, 0.48f}, W), sd_seg(p, (V){0.48f, -0.48f}, (V){-0.48f, 0.48f}, W));
+    case IC_INFO: {
+        float d = outline(sd_circle(p, (V){0, 0}, 0.62f), W * 0.9f);
+        d = uni(d, sd_circle(p, (V){0, -0.3f}, 0.1f));
+        return uni(d, sd_seg(p, (V){0, -0.06f}, (V){0, 0.34f}, W));
+    }
     case IC_HOME: {
         V roof[3] = {{-0.66f, -0.02f}, {0, -0.62f}, {0.66f, -0.02f}};
         float d = uni(sd_poly(p, roof, 3), sd_box(p, (V){0, 0.3f}, (V){0.46f, 0.34f}, 0.04f));
