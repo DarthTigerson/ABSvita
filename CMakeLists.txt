@@ -12,7 +12,7 @@ project(ABSvita C)
 include("$ENV{VITASDK}/share/vita.cmake" REQUIRED)
 
 # Release builds pass the tag: cmake -DAPP_VERSION=1.2.3 (CI does this)
-set(APP_VERSION "0.1.0" CACHE STRING "app version")
+set(APP_VERSION "0.2.0" CACHE STRING "app version")
 set(VITA_APP_NAME "ABSvita")
 set(VITA_TITLEID "ABSV00001")
 # param.sfo VERSION is "MM.mp": 0.1.0 -> 00.10, 1.2.3 -> 01.23 (minor and patch kept below 10)

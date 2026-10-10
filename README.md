@@ -9,11 +9,24 @@ your progress in sync with every other Audiobookshelf app.
   instead of downloading it first.
 - **Easy to drive with buttons.** Everything works with the d-pad and face buttons; touch
   is there when you want it. The bar at the bottom always shows what each button does.
-- **Home, Library, Series, Authors and Search** on one screen, with a mini player in the sidebar.
+- **Home, Library, Series, Authors, Search and Downloads** on one screen, with a mini player
+  in the sidebar.
 - **Now Playing** with chapters, skip back/forward, speed (0.75x to 2x), a sleep timer and
   screen-off listening.
+- **Downloads for offline listening.** Save books to the memory card from the book page
+  (Download, with progress, pause and resume) and play them with no Wi-Fi. The Downloads
+  section lists what's saved and how much space is left.
 - **Progress sync** with your server's listening sessions, plus an offline queue that
   catches up when you're back online.
+
+| | |
+|---|---|
+| ![Home](assets/screenshots/home.png) | ![Now Playing](assets/screenshots/player.png) |
+| ![Library](assets/screenshots/library.png) | ![Book details](assets/screenshots/book.png) |
+| ![Series](assets/screenshots/series.png) | ![Downloads](assets/screenshots/downloads.png) |
+
+<sub>Screenshots from the Vita3K emulator, showing public-domain [LibriVox](https://librivox.org)
+recordings and cover art.</sub>
 
 ABSvita plays while it is open. Turn the screen off from the player (SELECT) to save
 battery; audio keeps going and any button wakes the screen.

@@ -5,7 +5,7 @@ CC      ?= cc
 MPG_CFLAGS := $(shell pkg-config --cflags libmpg123 2>/dev/null || echo -I/opt/homebrew/opt/mpg123/include)
 MPG_LIBS   := $(shell pkg-config --libs libmpg123 2>/dev/null || echo -L/opt/homebrew/opt/mpg123/lib -lmpg123)
 BUILD   := build-host
-CFLAGS  := -DAPP_VERSION=\"0.1.0\" -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
+CFLAGS  := -DAPP_VERSION=\"0.2.0\" -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
            -fsanitize=address,undefined -fno-omit-frame-pointer \
            -Isrc -Isrc/core -Isrc/net -Isrc/ui $(MPG_CFLAGS) -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
 LDFLAGS := -fsanitize=address,undefined -lm -lcurl $(MPG_LIBS) -lpthread
