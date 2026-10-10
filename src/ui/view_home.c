@@ -16,6 +16,7 @@
 
 typedef struct {
     int row;           /* 0 continue, 1 recent */
+    bool moved;        /* the user has moved focus (until then, prefer Continue) */
     int col[2];
     Scroll sx[2];
 } Home;
@@ -90,6 +91,8 @@ static void home_update(View *v, const Input *in, float dt) {
     rows(&nc, &nr, &c, &r);
     int n[2] = {nc, nr};
     if (!nc) h->row = 1;
+    else if (!h->moved) h->row = 0; /* Continue appears once the library has loaded */
+    if (in->repeat & (B_UP | B_DOWN | B_LEFT | B_RIGHT)) h->moved = true;
     scroll_step(&h->sx[0], dt);
     scroll_step(&h->sx[1], dt);
     int *col = &h->col[h->row];

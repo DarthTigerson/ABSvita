@@ -53,6 +53,35 @@ NOUNS = ["Harbour", "Crown", "Library", "Orbit", "Forest", "Engine", "Empire", "
          "Lantern", "Archive", "Garden", "Signal"]
 
 
+def make_showcase(media, path):
+    """Books from tools/fetch_showcase.py (public-domain LibriVox titles and covers).
+    A few get the generated test audio so they can be played and downloaded."""
+    entries = json.load(open(path))
+    real = {e["title"] for e in entries[:3]}
+
+    def track(i, fname, start, codec, mime):
+        p = os.path.join(media, fname)
+        return {"index": i + 1, "ino": "ino-%s" % fname.replace(".", "-"), "fname": fname, "path": p,
+                "startOffset": start, "duration": probe(p), "codec": codec, "mimeType": mime,
+                "ext": os.path.splitext(fname)[1], "size": os.path.getsize(p)}
+
+    sets = [[track(0, "long.m4b", 0, "aac", "audio/mp4")], [track(0, "faststart.m4a", 0, "aac", "audio/mp4")]]
+    p1 = track(0, "part1.mp3", 0, "mp3", "audio/mpeg")
+    sets.append([p1, track(1, "part2.mp3", p1["duration"], "mp3", "audio/mpeg")])
+    books = []
+    for i, e in enumerate(entries):
+        tracks = sets[i] if e["title"] in real else []
+        dur = sum(t["duration"] for t in tracks) if tracks else 3600.0 * (3 + (i * 7) % 15) + 60 * (i * 13 % 60)
+        chapters = [{"id": k, "start": k * dur / 12, "end": (k + 1) * dur / 12, "title": "Chapter %d" % (k + 1)}
+                    for k in range(12)] if tracks else []
+        books.append({"id": "sc-%02d" % i, "title": e["title"], "author": e["author"], "series": e["series"],
+                      "narrator": "LibriVox volunteers", "tracks": tracks, "duration": dur, "chapters": chapters,
+                      "cover": e["cover"], "addedAt": 1700000000000 - i * 86400000,
+                      "description": "A LibriVox recording of %s by %s. LibriVox recordings are read by volunteers "
+                                     "and are in the public domain." % (e["title"], e["author"])})
+    return books
+
+
 def make_books(media, nfiller):
     books = []
 
@@ -152,7 +181,7 @@ class Handler(BaseHTTPRequestHandler):
                           "metadata": {"title": b["title"], "titleIgnorePrefix": b["title"], "subtitle": None,
                                        "authorName": b["author"], "authorNameLF": b["author"],
                                        "narratorName": b["narrator"], "seriesName": b["series"],
-                                       "description": "<p>A book for testing <b>ABSvita</b>.</p>"},
+                                       "description": b.get("description", "<p>A book for testing <b>ABSvita</b>.</p>")},
                           "coverPath": "/covers/" + b["cover"], "numTracks": len(b["tracks"]),
                           "duration": b["duration"], "size": sum(t["size"] for t in b["tracks"])}}
 
@@ -170,7 +199,7 @@ class Handler(BaseHTTPRequestHandler):
             series = [{"id": "se-" + m.group(1), "name": m.group(1), "sequence": m.group(2)}]
         return {"id": b["id"], "libraryId": LIB_ID, "mediaType": "book", "addedAt": b["addedAt"],
                 "media": {"metadata": {"title": b["title"], "authors": authors, "narrators": [b["narrator"]],
-                                       "series": series, "description": "<p>A book for testing ABSvita.</p>"},
+                                       "series": series, "description": b.get("description", "<p>A book for testing ABSvita.</p>")},
                           "chapters": b["chapters"], "duration": b["duration"],
                           "tracks": self.audio_tracks(b), "audioFiles": []}}
 
@@ -367,9 +396,17 @@ def main():
     ap.add_argument("--host", default="0.0.0.0")
     ap.add_argument("--media", default=os.path.join(os.path.dirname(__file__), "..", "tests", "media"))
     ap.add_argument("--books", type=int, default=60, help="filler books")
+    ap.add_argument("--showcase", help="books.json from tools/fetch_showcase.py (README screenshots)")
     a = ap.parse_args()
     Handler.media = os.path.abspath(a.media)
-    Handler.books = make_books(Handler.media, a.books)
+    if a.showcase:
+        Handler.books = make_showcase(Handler.media, a.showcase)
+        now = int(time.time() * 1000)
+        for k, frac in ((0, 0.42), (5, 0.18), (8, 0.67)):  # some listening in progress
+            if k < len(Handler.books):
+                state["progress"][Handler.books[k]["id"]] = (Handler.books[k]["duration"] * frac, now - k * 60000)
+    else:
+        Handler.books = make_books(Handler.media, a.books)
     srv = ThreadingHTTPServer((a.host, a.port), Handler)
     srv.daemon_threads = True
     print("mock ABS on %s:%d with %d books" % (a.host, a.port, len(Handler.books)), flush=True)

@@ -118,7 +118,31 @@ TEST(config_roundtrip_and_clamp) {
     CHECK_EQ_INT(cfg_next_skip(60), 10);
 }
 
+/* Logging out writes a shorter config over a longer one; it must still parse
+ * (the emulator showed stale tails), and no temp file is left behind. */
+TEST(config_shrinks_cleanly) {
+    const char *p = "build-host/cfg_shrink.json";
+    Config c, d;
+    cfg_defaults(&c);
+    memset(c.refresh, 'x', sizeof c.refresh - 1);
+    c.refresh[sizeof c.refresh - 1] = 0;
+    CHECK_EQ_INT(cfg_save(&c, p), 0);
+    FILE *f = fopen("build-host/cfg_shrink.json.tmp", "wb");
+    fputs("{\"stale\": \"temp file from a crash, longer than the next save\", \"pad\": \"....................\"}", f);
+    fclose(f);
+    c.refresh[0] = 0;
+    strcpy(c.username, "u");
+    CHECK_EQ_INT(cfg_save(&c, p), 0);
+    CHECK_EQ_INT(cfg_load(&d, p), 0);
+    CHECK_STR(d.refresh, "");
+    CHECK_STR(d.username, "u");
+    f = fopen("build-host/cfg_shrink.json.tmp", "rb");
+    CHECK(f == NULL);
+    if (f) fclose(f);
+}
+
 void suite_policy(void) {
+    RUN(config_shrinks_cleanly);
     RUN(sync_interval_only_while_playing);
     RUN(sleep_minutes_fade_and_stop);
     RUN(sleep_end_of_chapter);

@@ -140,7 +140,7 @@ static void dls_draw(View *v, bool focused) {
         if (x->state == DL_ACTIVE || x->state == DL_PAUSED)
             draw_progress_bar(tx, y + h - 16, tw, 5, frac, x->state == DL_ACTIVE ? C_ACCENT : C_DIM, C_LINE);
         if (player_book() && !strcmp(player_book_id(), x->id))
-            gfx_icon(player_playing() ? IC_HEADPHONES : IC_PAUSE, CX + CW - 28, y + 24, 18, C_ACCENT);
+            gfx_text_right(F_BOLD, 14, CX + CW - 20, y + 16, C_ACCENT, player_playing() ? "Playing" : "Paused");
         hit_add(CX, y, CW, h, on_tap, i, 0);
     }
     clip_off();

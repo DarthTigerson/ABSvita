@@ -94,6 +94,7 @@ int pq_save(const ProgressQueue *q, const char *path) {
     /* write to a temp file then rename, so a power cut never leaves half a file */
     char tmp[256];
     snprintf(tmp, sizeof tmp, "%s.tmp", path);
+    remove(tmp);
     FILE *f = fopen(tmp, "wb");
     int rc = -1;
     if (f) {

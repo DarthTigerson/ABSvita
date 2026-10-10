@@ -92,11 +92,17 @@ int cfg_save(const Config *c, const char *path) {
     char *s = cJSON_Print(o);
     cJSON_Delete(o);
     if (!s) return -1;
-    FILE *f = fopen(path, "wb");
+    /* temp file then rename: never a half-written or stale-tailed config (it holds the login) */
+    char tmp[300];
+    snprintf(tmp, sizeof tmp, "%s.tmp", path);
+    remove(tmp);
+    FILE *f = fopen(tmp, "wb");
     int rc = -1;
     if (f) {
         rc = fputs(s, f) >= 0 ? 0 : -1;
-        fclose(f);
+        if (fclose(f) != 0) rc = -1;
+        if (rc == 0) { remove(path); rc = rename(tmp, path); }
+        else remove(tmp);
     }
     free(s);
     return rc;

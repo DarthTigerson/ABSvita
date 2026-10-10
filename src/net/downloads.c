@@ -83,11 +83,15 @@ static int save_meta(const BookDetail *b) {
     mkdir(dir, 0777);
     char *json = abs_detail_to_json(b);
     if (!json) return -1;
+    char tmp[310];
     snprintf(p, sizeof p, "%s/meta.json", dir);
-    FILE *f = fopen(p, "wb");
+    snprintf(tmp, sizeof tmp, "%s.tmp", p);
+    remove(tmp);
+    FILE *f = fopen(tmp, "wb");
     int ok = f && fputs(json, f) >= 0;
     if (f && fclose(f) != 0) ok = 0;
     free(json);
+    if (ok) { remove(p); ok = rename(tmp, p) == 0; }
     return ok ? 0 : -1;
 }
 
