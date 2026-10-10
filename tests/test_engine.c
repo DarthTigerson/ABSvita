@@ -5,6 +5,8 @@
 #include "abs_client.h"
 #include "engine.h"
 #include "osal.h"
+#include "player.h"
+#include "worker.h"
 #include "test.h"
 
 #define FAST 20.0
@@ -116,6 +118,49 @@ TEST(seek_and_end) {
     CHECK_EQ_INT(engine_state(), ENG_IDLE);
 }
 
+static ProgressQueue g_pq;
+static int g_saves;
+static void save_queue(void) { g_saves++; }
+
+TEST(player_open_skip_sync) {
+    static Config cfg;
+    cfg_defaults(&cfg);
+    cfg.sync_interval = 15;
+    player_init(&cfg, &g_pq, save_queue, "Test");
+    BookSummary b = {.id = "li-fast"};
+    player_open(&b, -1);
+    CHECK_EQ_INT(player_phase(), PL_OPENING);
+    uint64_t end = now_ms() + 5000;
+    while (now_ms() < end && !(player_has_book() && engine_state() == ENG_PLAYING)) { player_tick(0.016); sleep_ms(10); }
+    CHECK(player_has_book());
+    CHECK_STR(player_book_id(), "li-fast");
+    CHECK_EQ_INT(player_chapter_index(), 0);
+    player_jump(70);
+    sleep_ms(50);
+    CHECK_EQ_INT(player_chapter_index(), 1);
+    player_pause(); /* reports the position: the server's progress follows */
+    for (int i = 0; i < 100 && worker_pending(g_sync); i++) sleep_ms(10);
+    const QEntry *q = pq_get(&g_pq, "li-fast");
+    CHECK(q != NULL);
+    if (q) { CHECK(!q->pending); CHECK_NEAR(q->current_time, 70, 2); }
+    CHECK(g_saves > 0);
+    BookSummary *books = NULL;
+    int n = 0;
+    absc_fetch_library(&books, &n, NULL);
+    int i = 0;
+    while (i < n && strcmp(books[i].id, "li-fast")) i++;
+    CHECK(i < n);
+    if (i < n) CHECK_NEAR(books[i].current_time, 70, 2);
+    free(books);
+    /* reopening resumes from the server position */
+    player_exit();
+    player_open(&b, -1);
+    end = now_ms() + 5000;
+    while (now_ms() < end && !player_has_book()) { player_tick(0.016); sleep_ms(1); }
+    CHECK_NEAR(player_position(), 70, 1); /* (the null sink plays 20x fast: read it at once) */
+    player_exit();
+}
+
 void suite_engine(void) {
     if (!getenv("MOCK_ABS")) { printf("  (skipped: MOCK_ABS not set)\n"); return; }
     AudioSink sink = {s_open, s_write, s_close, NULL};
@@ -123,6 +168,11 @@ void suite_engine(void) {
     RUN(crosses_track_boundary);
     RUN(double_speed);
     RUN(seek_and_end);
+    g_api = worker_create("api", 128);
+    g_sync = worker_create("sync", 128);
+    RUN(player_open_skip_sync);
+    worker_destroy(g_api);
+    worker_destroy(g_sync);
     engine_exit();
     free(g_pb.tracks);
     free(g_pb.sources);
