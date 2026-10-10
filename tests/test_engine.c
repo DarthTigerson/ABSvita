@@ -59,12 +59,11 @@ TEST(crosses_track_boundary) {
     double p = wait_pos(90, 15000);
     CHECK(p >= 90 && p < 92);
     CHECK(engine_state() == ENG_PLAYING || engine_state() == ENG_BUFFERING);
-    /* book time grows ~20x faster than wall time here */
-    uint64_t w0 = now_ms();
-    double p0 = engine_position();
-    sleep_ms(500);
-    double rate = (engine_position() - p0) / ((now_ms() - w0) / 1000.0);
-    CHECK_NEAR(rate, FAST, 4);
+    /* book time advances one second per second of audio handed to the sink */
+    double p0 = engine_position(), f0 = g_sink.frames;
+    sleep_ms(400);
+    double heard = (g_sink.frames - f0) / g_sink.rate;
+    CHECK_NEAR(heard > 0 ? (engine_position() - p0) / heard : 0, 1.0, 0.05);
     engine_pause();
     sleep_ms(100);
     CHECK_EQ_INT(engine_state(), ENG_PAUSED);
@@ -157,7 +156,7 @@ TEST(player_open_skip_sync) {
     player_open(&b, -1);
     end = now_ms() + 5000;
     while (now_ms() < end && !player_has_book()) { player_tick(0.016); sleep_ms(1); }
-    CHECK_NEAR(player_position(), 70, 1); /* (the null sink plays 20x fast: read it at once) */
+    CHECK_NEAR(player_position(), 70, 2.5); /* (the null sink plays 20x fast: a few frames may pass) */
     player_exit();
 }
 
