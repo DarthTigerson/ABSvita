@@ -77,23 +77,23 @@ TEST(crosses_track_boundary) {
     CHECK_NEAR(engine_position(), g_pb.duration, 0.6);
 }
 
+/* Book seconds advanced per second of audio sent to the sink (= playback speed). */
+static double measured_speed(void) {
+    double p0 = engine_position(), f0 = g_sink.frames;
+    sleep_ms(400);
+    double heard = (g_sink.frames - f0) / g_sink.rate;
+    return heard > 0 ? (engine_position() - p0) / heard : 0;
+}
+
 TEST(double_speed) {
     load_book("li-fast");
     engine_set_speed(2.0f);
     engine_load(&g_pb, 10, true);
     wait_pos(12, 5000);
-    uint64_t w0 = now_ms();
-    double p0 = engine_position();
-    sleep_ms(500);
-    double rate = (engine_position() - p0) / ((now_ms() - w0) / 1000.0);
-    CHECK_NEAR(rate, FAST * 2, 8);
+    CHECK_NEAR(measured_speed(), 2.0, 0.1);
     engine_set_speed(1.0f);
     sleep_ms(200);
-    w0 = now_ms();
-    p0 = engine_position();
-    sleep_ms(500);
-    rate = (engine_position() - p0) / ((now_ms() - w0) / 1000.0);
-    CHECK_NEAR(rate, FAST, 4);
+    CHECK_NEAR(measured_speed(), 1.0, 0.05);
 }
 
 TEST(seek_and_end) {
