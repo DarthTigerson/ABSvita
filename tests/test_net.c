@@ -170,6 +170,9 @@ TEST(long_m4b_no_full_moov) {
     CHECK_NEAR(tone_hz(st, 0.5, 0.05), 320, 6);
     CHECK_EQ_INT(stream_seek(st, 21500.4, &actual), 0);
     CHECK_NEAR(tone_hz(st, 0.4, 0.05), 220, 6);
+    /* near the end: decoding stops at EOF after the remaining ~10 s */
+    CHECK_EQ_INT(stream_seek(st, 21590.0, &actual), 0);
+    CHECK_NEAR(decode_all(st), 21600.0 - actual, 0.2);
     stream_table_stats(st, &req, &bytes);
     printf("  after seeks: %d table requests, %llu KB\n", req, (unsigned long long)(bytes >> 10));
     stream_close(st);

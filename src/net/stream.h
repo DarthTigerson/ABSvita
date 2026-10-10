@@ -15,7 +15,8 @@ typedef struct {
     char codec[16];
 } TrackSource;
 
-enum { STREAM_EOF = 1, STREAM_ERR = -1, STREAM_IO = -2, STREAM_INTERRUPTED = -3, STREAM_UNSUPPORTED = -4 };
+/* STREAM_EOF is 0 so it can never be mistaken for a frame count */
+enum { STREAM_EOF = 0, STREAM_ERR = -1, STREAM_IO = -2, STREAM_INTERRUPTED = -3, STREAM_UNSUPPORTED = -4 };
 
 #define STREAM_MAX_FRAMES 4096
 
@@ -25,7 +26,7 @@ typedef struct Stream Stream;
 Stream *stream_open(const TrackSource *src, AuthFn auth, int *err);
 /* Seeks to local time t; *actual gets the real position. 0 ok. */
 int stream_seek(Stream *s, double t, double *actual);
-/* Decodes PCM (interleaved s16). Returns frames (>0), STREAM_EOF, or a STREAM_* error.
+/* Decodes PCM (interleaved s16). Returns frames (>0), STREAM_EOF (0), or a STREAM_* error (<0).
  * STREAM_IO and STREAM_INTERRUPTED are retryable (nothing was consumed). */
 int stream_read(Stream *s, int16_t *out, int max_frames, int *channels, int *rate);
 void stream_interrupt(Stream *s, int on);
