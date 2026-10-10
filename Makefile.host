@@ -2,19 +2,26 @@
 #   make -f Makefile.host test
 CC      ?= cc
 BUILD   := build-host
-CFLAGS  := -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
+CFLAGS  := -DAPP_VERSION=\"0.1.0\" -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
            -fsanitize=address,undefined -fno-omit-frame-pointer \
-           -Isrc -Isrc/core -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
-LDFLAGS := -fsanitize=address,undefined -lm
+           -Isrc -Isrc/core -Isrc/net -I/opt/homebrew/opt/mpg123/include -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
+LDFLAGS := -fsanitize=address,undefined -lm -lcurl -L/opt/homebrew/opt/mpg123/lib -lmpg123 -lpthread
 
-CORE    := $(wildcard src/core/*.c)
+CORE    := $(wildcard src/core/*.c) $(wildcard src/net/*.c)
 VENDOR  := vendor/cjson/cJSON.c vendor/sonic/sonic.c $(wildcard vendor/helix-aac/*.c)
 TESTS   := $(wildcard tests/*.c)
 OBJS    := $(patsubst %.c,$(BUILD)/%.o,$(CORE) $(VENDOR) $(TESTS))
 
-.PHONY: test clean fixtures
+.PHONY: test nettest clean fixtures
 test: $(BUILD)/tests_run fixtures
 	./$(BUILD)/tests_run
+
+# Runs every suite with the network tests enabled against a local mock server.
+MOCK_PORT ?= 18081
+nettest: $(BUILD)/tests_run fixtures
+	@sh tools/gen_media.sh tests/media >/dev/null
+	@python3 tools/mock_abs.py --port $(MOCK_PORT) --host 127.0.0.1 > $(BUILD)/mock.log 2>&1 & echo $$! > $(BUILD)/mock.pid; sleep 1.5; \
+	MOCK_ABS=http://127.0.0.1:$(MOCK_PORT) ./$(BUILD)/tests_run; rc=$$?; kill `cat $(BUILD)/mock.pid`; exit $$rc
 
 fixtures:
 	@sh tests/gen_fixtures.sh
