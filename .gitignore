@@ -16,3 +16,4 @@ docs/
 .idea/
 *.swp
 .claude/
+build-test/

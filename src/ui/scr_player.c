@@ -130,7 +130,7 @@ void player_screen_update(const Input *in, float dt) {
         if (in->repeat & B_R) S.ch_focus = S.ch_focus + 6 < n ? S.ch_focus + 6 : n - 1;
         if (in->down & B_OK && n) { player_jump(b->chapters[S.ch_focus].start); S.chapters = false; }
         if (in->down & (B_BACK | B_TRIANGLE)) S.chapters = false;
-        float max = n * 52.0f - 320;
+        float max = n * 52.0f - 350;
         if (in->dragging) scroll_drag(&S.ch_sc, in->drag_dy, max > 0 ? max : 0);
         else scroll_show(&S.ch_sc, S.ch_focus * 52.0f - 52, (S.ch_focus + 2) * 52.0f, 320, max > 0 ? max : 0);
         return;
@@ -179,7 +179,9 @@ static void draw_chapters(void) {
     const BookDetail *b = player_book();
     if (!b) return;
     gfx_rect(0, 0, SCREEN_W, CONTENT_BOTTOM, gfx_alpha(0xFF000000, 0.6f));
-    float x = 170, y = 34, w = 620, h = 436;
+    float w = 620, h = 70 + b->nchapters * 52 + 16;
+    if (h > 436) h = 436;
+    float x = 170, y = 34 + (436 - h) / 2;
     gfx_rrect(x, y, w, h, 18, C_PANEL);
     gfx_text(F_BOLD, 22, x + 24, y + 22, C_TEXT, "Chapters");
     char t[48];
@@ -195,7 +197,7 @@ static void draw_chapters(void) {
         bool foc = i == S.ch_focus;
         if (foc) gfx_rrect(x + 12, ry, w - 24, 46, 10, C_PANEL2);
         if (i == cur) gfx_rrect(x + 12, ry + 12, 4, 22, 2, C_ACCENT);
-        char num[8], tm[24], title[160];
+        char num[12], tm[24], title[160];
         snprintf(num, sizeof num, "%d", i + 1);
         gfx_text_center(F_BOLD, 15, x + 46, ry + 23, i == cur ? C_ACCENT : C_DIM, num);
         fmt_time(b->chapters[i].start, tm, sizeof tm);

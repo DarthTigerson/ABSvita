@@ -55,6 +55,7 @@ TEST(login_and_play) {
     CHECK_STR(s.book.tracks[1].ext, ".mp3");
     CHECK_NEAR(s.book.tracks[1].start_offset, s.book.tracks[0].duration, 0.01);
     book_detail_free(&s.book);
+    CHECK_EQ_INT(absc_play("li-f000", "Test", &s), ABS_ERR_NO_AUDIO);
     BookSummary *books = NULL;
     int n = 0;
     CHECK_EQ_INT(absc_fetch_library(&books, &n, NULL), ABS_OK);

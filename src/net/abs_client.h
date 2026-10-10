@@ -17,6 +17,7 @@ enum {
     ABS_ERR_AUTH = -2,   /* bad credentials / refresh failed -> login screen */
     ABS_ERR_SERVER = -3, /* unexpected status or JSON */
     ABS_ERR_NOMEM = -4,
+    ABS_ERR_NO_AUDIO = -5, /* the book has no playable files */
 };
 
 /* cfg is kept by pointer; refresh tokens are written back into it and saved

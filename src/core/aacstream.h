@@ -18,6 +18,7 @@ typedef struct {
     uint32_t frame_cap;
     int out_rate, out_ch; /* known after the first decoded frame */
     int errors;           /* consecutive decode errors */
+    int table_errors;     /* consecutive sample-table read failures */
 } AacStream;
 
 /* media serves the audio bytes; tables serves the moov (may be the same reader). */
@@ -27,7 +28,7 @@ int aacs_open_at(AacStream *s, const Reader *media, const Reader *tables, uint64
 int aacs_seek(AacStream *s, double t, double *actual);
 /* Decodes one AAC frame into pcm (interleaved). *frames = samples per channel.
  * 0 ok, 1 EOF, -2 I/O error / -3 interrupted (retryable: the frame is not
- * consumed), other <0 fatal. Corrupt frames are skipped (output silence). */
+ * consumed; sample-table read failures count as I/O until 50 in a row), other <0 fatal. Corrupt frames are skipped (output silence). */
 int aacs_decode(AacStream *s, int16_t *pcm, int *frames, int *channels, int *rate);
 void aacs_close(AacStream *s);
 

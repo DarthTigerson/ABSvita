@@ -81,7 +81,8 @@ static void open_job(void *ud) {
     } else {
         r->rc = prc;
         str_copy(r->msg, sizeof r->msg, prc == ABS_ERR_AUTH ? "Please log in again" :
-                 prc == ABS_ERR_NET ? "Can't reach the server" : "Server error");
+                 prc == ABS_ERR_NET ? "Can't reach the server" :
+                 prc == ABS_ERR_NO_AUDIO ? "This book has no audio files" : "The server sent something unexpected");
     }
     if (r->rc == 0 && r->book.duration > 0 && r->start > r->book.duration - 5) r->start = 0; /* finished: restart */
     mutex_lock(&P.lock);

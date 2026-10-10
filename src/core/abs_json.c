@@ -240,8 +240,9 @@ int abs_parse_play(const char *json, PlaySession *s) {
     abs_chapters_from_tracks(d);
     cJSON_Delete(root);
     if (rc || !s->id[0] || d->ntracks == 0) {
+        int empty = !rc && s->id[0] && d->ntracks == 0;
         book_detail_free(d);
-        return -1;
+        return empty ? -2 : -1;
     }
     return 0;
 }

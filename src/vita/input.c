@@ -17,7 +17,51 @@ static uint32_t g_prev;
 static uint64_t g_since[32], g_next[32];
 static struct { bool down; float x, y, sx, sy; uint64_t t0; bool moved; } T;
 
+#ifdef ABSVITA_AUTOPILOT
+/* Test builds only: scripted presses from ux0:data/ABSvita/autopilot.txt, one
+ * "<wait ms> <button>" per line (button: up down left right ok back square
+ * triangle l r start select none). Each step is logged so screenshots can be timed. */
+#include <stdio.h>
+#include "dbg.h"
+static struct { int n, i; int wait[256]; uint32_t btn[256]; uint64_t next, release; uint32_t cur; } AP;
+static void autopilot_load(void) {
+    FILE *f = fopen("ux0:data/ABSvita/autopilot.txt", "r");
+    if (!f) return;
+    char name[32];
+    int w;
+    static const struct { const char *n; uint32_t b; } map[] = {
+        {"up", B_UP}, {"down", B_DOWN}, {"left", B_LEFT}, {"right", B_RIGHT}, {"ok", B_OK}, {"back", B_BACK},
+        {"square", B_SQUARE}, {"triangle", B_TRIANGLE}, {"l", B_L}, {"r", B_R}, {"start", B_START},
+        {"select", B_SELECT}, {"none", 0}};
+    while (AP.n < 256 && fscanf(f, "%d %31s", &w, name) == 2) {
+        AP.wait[AP.n] = w;
+        AP.btn[AP.n] = 0;
+        for (unsigned k = 0; k < sizeof map / sizeof map[0]; k++) if (!strcmp(map[k].n, name)) AP.btn[AP.n] = map[k].b;
+        AP.n++;
+    }
+    fclose(f);
+    dbg("autopilot: %d steps", AP.n);
+}
+static uint32_t autopilot(uint64_t now) {
+    if (AP.i > AP.n) return 0;
+    if (!AP.next) AP.next = now + 1000000;
+    if (AP.cur && now >= AP.release) AP.cur = 0;
+    if (!AP.cur && AP.i < AP.n && now >= AP.next + (uint64_t)AP.wait[AP.i] * 1000) {
+        AP.cur = AP.btn[AP.i];
+        AP.release = now + 100000;
+        AP.next = now + 100000;
+        dbg("autopilot: step %d", AP.i);
+        AP.i++;
+        if (AP.i == AP.n) dbg("autopilot: done");
+    }
+    return AP.cur;
+}
+#endif
+
 void input_init(bool enter_is_cross) {
+#ifdef ABSVITA_AUTOPILOT
+    autopilot_load();
+#endif
     g_cross = enter_is_cross;
     sceCtrlSetSamplingMode(SCE_CTRL_MODE_ANALOG_WIDE);
     sceTouchSetSamplingState(SCE_TOUCH_PORT_FRONT, SCE_TOUCH_SAMPLING_STATE_START);
@@ -47,6 +91,9 @@ void input_poll(Input *in) {
         else b |= ly < 0 ? B_UP : B_DOWN;
     }
     uint64_t now = sceKernelGetProcessTimeWide();
+#ifdef ABSVITA_AUTOPILOT
+    b |= autopilot(now);
+#endif
     in->held = b;
     in->down = b & ~g_prev;
     in->repeat = in->down;

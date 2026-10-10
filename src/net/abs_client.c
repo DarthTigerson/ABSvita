@@ -19,6 +19,7 @@ static Mutex g_refresh_lock; /* refresh tokens rotate: only one refresh at a tim
 static volatile int g_gen;       /* bumped whenever a new access token is stored */
 static volatile uint64_t g_offline_until; /* fail fast after a network error */
 static char g_last_detail[64];
+static volatile int g_last_status;
 const char *absc_last_detail(void) { return g_last_detail; }
 
 #define OFFLINE_BACKOFF_MS 20000
@@ -180,6 +181,7 @@ static int api(const char *method, const char *path, const char *body, uint32_t 
         if (rc != ABS_OK) return rc;
     }
     if (out->status == 401) { http_resp_free(out); return ABS_ERR_AUTH; }
+    g_last_status = out->status;
     if (out->status < 200 || out->status >= 300) {
         dbg("%s %s -> HTTP %d", method, path, out->status);
         http_resp_free(out);
@@ -273,8 +275,10 @@ int absc_play(const char *id, const char *model, PlaySession *out) {
     abs_build_play_body(g_cfg->device_id, model, APP_VERSION, body, sizeof body);
     HttpResp r;
     int rc = api("POST", path, body, 4 << 20, &r);
+    if (rc == ABS_ERR_SERVER && g_last_status == 404) return ABS_ERR_NO_AUDIO;
     if (rc) return rc;
-    rc = abs_parse_play(r.data, out) == 0 ? ABS_OK : ABS_ERR_SERVER;
+    int pr = abs_parse_play(r.data, out);
+    rc = pr == 0 ? ABS_OK : pr == -2 ? ABS_ERR_NO_AUDIO : ABS_ERR_SERVER;
     http_resp_free(&r);
     return rc;
 }

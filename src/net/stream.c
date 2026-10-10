@@ -178,7 +178,8 @@ static int read_mpg(Stream *s, int16_t *out, int max_frames, int *channels, int 
                 Mp4Cursor mark = mp4_tell(&s->aac.mp4);
                 int rc = mp4_next(&s->aac.mp4, &off, &size);
                 if (rc == 1) { s->feed_eof = true; continue; }
-                if (rc < 0 || size > sizeof s->in) return STREAM_ERR;
+                if (rc < 0) { mp4_restore(&s->aac.mp4, &mark); return STREAM_IO; } /* tables unreadable: retry */
+                if (size > sizeof s->in) return STREAM_ERR;
                 int k = reader_read_full(&s->media, off, s->in, size);
                 if (k != 0) {
                     mp4_restore(&s->aac.mp4, &mark); /* retry this sample later */

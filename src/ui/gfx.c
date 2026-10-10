@@ -292,8 +292,8 @@ int gfx_wrap(FontW w, int size, float x, float y, float max_w, float line_h, int
         pos += used;
         if (s[pos] == '\n') pos++;
         if (lines == max_lines - 1 && pos < slen) {
-            char rest[512];
-            snprintf(rest, sizeof rest, "%s %s", line, s + pos);
+            char rest[1100];
+            snprintf(rest, sizeof rest, "%s %.540s", line, s + pos);
             gfx_fit(w, size, rest, max_w, line, sizeof line);
         }
         gfx_text(w, size, x, y + lines * line_h, c, line);

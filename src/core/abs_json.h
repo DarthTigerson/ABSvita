@@ -17,6 +17,7 @@ int abs_parse_me_progress(const char *json, BookSummary *books, int n);
 /* Ids from /api/me/items-in-progress, most recent first. Returns count. */
 int abs_parse_in_progress(const char *json, char ids[][40], int max);
 int abs_parse_item(const char *json, BookDetail *out);
+/* -2: a valid session for a book with no audio tracks */
 int abs_parse_play(const char *json, PlaySession *out);
 /* When a book has no chapters, uses one chapter per track (titled from the file name). */
 void abs_chapters_from_tracks(BookDetail *b);

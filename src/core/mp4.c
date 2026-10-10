@@ -78,6 +78,7 @@ static const uint8_t *table_get(const Reader *r, Mp4Table *t, uint32_t i) {
         uint32_t first = i;
         uint32_t n = t->count - first;
         if (n > per) n = per;
+        t->cn = 0; /* a failed read may leave the cache half-overwritten */
         if (reader_read_full(r, t->off + (uint64_t)first * t->esize, t->cache, n * t->esize) != 0) return NULL;
         t->cfirst = first;
         t->cn = n;
@@ -270,12 +271,19 @@ static int stsc_entry(Mp4 *m, uint32_t i, uint32_t *first, uint32_t *spc) {
     return 0;
 }
 
-static void load_run(Mp4 *m) {
-    uint32_t first, spc;
-    stsc_entry(m, m->stsc_i, &first, &spc);
+/* Loads the stsc run m->stsc_i. -1 when the table can't be read (e.g. a network
+ * failure under a remote reader): offsets would be wrong, so callers must stop. */
+static int load_run(Mp4 *m) {
+    uint32_t first = 0, spc = 0;
+    if (stsc_entry(m, m->stsc_i, &first, &spc) != 0) return -1;
     m->spc = spc ? spc : 1;
-    if (m->stsc_i + 1 < m->stsc.count && stsc_entry(m, m->stsc_i + 1, &first, &spc) == 0) m->next_run = first;
-    else m->next_run = UINT32_MAX;
+    if (m->stsc_i + 1 < m->stsc.count) {
+        if (stsc_entry(m, m->stsc_i + 1, &first, &spc) != 0) return -1;
+        m->next_run = first;
+    } else {
+        m->next_run = UINT32_MAX;
+    }
+    return 0;
 }
 
 int mp4_seek(Mp4 *m, double seconds, double *actual) {
@@ -314,7 +322,7 @@ int mp4_seek(Mp4 *m, double seconds, double *actual) {
     uint32_t first_s = 0;
     m->stsc_i = 0;
     for (;;) {
-        load_run(m);
+        if (load_run(m) != 0) return -1;
         uint32_t first, spc;
         if (stsc_entry(m, m->stsc_i, &first, &spc) != 0) return -1;
         uint32_t run_end_chunk = m->next_run == UINT32_MAX ? m->nchunks + 1 : m->next_run;
@@ -366,7 +374,7 @@ int mp4_next(Mp4 *m, uint64_t *off, uint32_t *size) {
         m->chunk++;
         if (m->chunk >= m->next_run) {
             m->stsc_i++;
-            load_run(m);
+            if (load_run(m) != 0) return -1;
         }
         if (m->s < m->nsamples) {
             if (m->chunk > m->nchunks || chunk_offset(m, m->chunk, &m->off) != 0) return -1;

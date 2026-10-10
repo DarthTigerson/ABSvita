@@ -46,7 +46,13 @@ int aacs_decode(AacStream *s, int16_t *pcm, int *frames, int *channels, int *rat
     uint32_t size;
     Mp4Cursor mark = mp4_tell(&s->mp4);
     int rc = mp4_next(&s->mp4, &off, &size);
-    if (rc != 0) return rc > 0 ? 1 : -1;
+    if (rc > 0) return 1;
+    if (rc < 0) {
+        /* the sample tables couldn't be read (remote tables: usually the network) */
+        mp4_restore(&s->mp4, &mark);
+        return ++s->table_errors > 50 ? -1 : -2;
+    }
+    s->table_errors = 0;
     if (size > s->frame_cap) {
         if (size > 1 << 20) return -1;
         uint8_t *n = realloc(s->frame, size);

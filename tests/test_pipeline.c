@@ -41,6 +41,47 @@ static int decode_all(const char *path, Pcm *out, double seek, double max_second
     return rc < 0 ? -3 : 0;
 }
 
+/* A tables reader that fails every period-th read (a flaky network under the block cache). */
+typedef struct { Reader inner; int n, period, failures; } Flaky;
+static int flaky_read(void *ctx, uint64_t off, void *buf, uint32_t n) {
+    Flaky *f = ctx;
+    if (++f->n % f->period == 0) { f->failures++; return -1; }
+    return f->inner.read_at(f->inner.ctx, off, buf, n);
+}
+
+TEST(aac_survives_flaky_tables) {
+    const char *path = "tests/fixtures/media/aac_lc.m4b";
+    Pcm clean;
+    if (decode_all(path, &clean, 0, 0) == -1) { printf("  (fixture missing, skipped)\n"); return; }
+    Reader media, inner;
+    FileReaderCtx fm, ft;
+    reader_file_open(&media, &fm, path, 0, 0);
+    reader_file_open(&inner, &ft, path, 0, 0);
+    Flaky fl = {inner, 0, 1 << 30, 0};
+    Reader tables = {&fl, flaky_read, inner.size};
+    static AacStream s;
+    CHECK_EQ_INT(aacs_open(&s, &media, &tables), 0);
+    fl.period = 2; /* from now on every other table read fails */
+    int16_t pcm[AACS_MAX_PCM];
+    int frames, ch, rate, rc, retries = 0;
+    long total = 0;
+    for (;;) {
+        rc = aacs_decode(&s, pcm, &frames, &ch, &rate);
+        if (rc == -2) { retries++; continue; } /* retryable: same frame next call */
+        if (rc != 0) break;
+        if (memcmp(pcm, clean.pcm + total * ch, sizeof(int16_t) * frames * ch) != 0) { CHECK(!"pcm differs"); break; }
+        total += frames;
+    }
+    CHECK_EQ_INT(rc, 1); /* reached the end, not an error */
+    CHECK_EQ_INT(total, clean.frames);
+    CHECK(fl.failures > 0);
+    CHECK(retries > 0);
+    aacs_close(&s);
+    reader_file_close(&fm);
+    reader_file_close(&ft);
+    free(clean.pcm);
+}
+
 TEST(aac_lc_full_decode) {
     Pcm p;
     int rc = decode_all("tests/fixtures/media/aac_lc.m4b", &p, 0, 0);
@@ -116,6 +157,7 @@ TEST(sonic_two_x_keeps_pitch) {
 
 void suite_pipeline(void) {
     RUN(aac_lc_full_decode);
+    RUN(aac_survives_flaky_tables);
     RUN(aac_seek_then_decode);
     RUN(aac_mono_22k);
     RUN(he_aac_sbr);
