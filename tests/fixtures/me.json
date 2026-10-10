@@ -1,0 +1,5 @@
+{"id":"usr_1","username":"thomas","mediaProgress":[
+ {"libraryItemId":"li_a","episodeId":null,"duration":75600.5,"progress":0.25,"currentTime":18900,"isFinished":false,"lastUpdate":1760000000000},
+ {"libraryItemId":"li_c","progress":1,"currentTime":10,"isFinished":true,"lastUpdate":1750000000000},
+ {"libraryItemId":"li_zzz","progress":0.1,"currentTime":5,"isFinished":false,"lastUpdate":1}
+]}

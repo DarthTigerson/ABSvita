@@ -1,0 +1,5 @@
+{"results":[
+ {"id":"li_a","ino":"1","libraryId":"lib_1","mediaType":"book","addedAt":1700000000000,"media":{"id":"b_a","metadata":{"title":"Dune","titleIgnorePrefix":"Dune","subtitle":null,"authorName":"Frank Herbert","authorNameLF":"Herbert, Frank","narratorName":"Scott Brick","seriesName":"Dune #1","description":"<p>Long text</p>"},"coverPath":"/x.jpg","numTracks":1,"duration":75600.5,"size":123}},
+ {"id":"li_b","ino":"2","libraryId":"lib_1","mediaType":"book","addedAt":1710000000000,"media":{"id":"b_b","metadata":{"title":"L’Étranger","authorName":null,"seriesName":null},"duration":12000}},
+ {"id":"li_c","mediaType":"book","media":{"metadata":{}}}
+],"total":684,"limit":100,"page":0,"sortBy":"media.metadata.title","mediaType":"book","minified":true}

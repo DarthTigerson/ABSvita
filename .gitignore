@@ -1,0 +1,18 @@
+build/
+build-host/
+*.vpk
+*.velf
+*.self
+*.elf
+tests/fixtures/media/
+tests/media/
+.DS_Store
+
+# local notes and planning docs (not published)
+docs/
+
+# editors / OS
+.vscode/
+.idea/
+*.swp
+.claude/

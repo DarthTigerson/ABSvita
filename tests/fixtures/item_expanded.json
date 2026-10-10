@@ -1,0 +1,6 @@
+{"id":"li_a","libraryId":"lib_1","mediaType":"book","media":{"id":"b_a",
+ "metadata":{"title":"Dune","authors":[{"id":"a1","name":"Frank Herbert"}],"narrators":["Scott Brick","Others"],"authorName":"Frank Herbert","narratorName":"Scott Brick, Others","description":"<p>Set on the desert planet &amp; more.</p>"},
+ "chapters":[{"id":0,"start":0,"end":600.5,"title":"Opening"},{"id":1,"start":600.5,"end":75600.5,"title":"Book One"}],
+ "duration":75600.5,
+ "audioFiles":[{"index":1,"ino":"9001","codec":"aac","mimeType":"audio/mp4","duration":75600.5,"metadata":{"filename":"dune.m4b","ext":".m4b","size":645000000}}],
+ "tracks":[{"index":1,"ino":"9001","startOffset":0,"duration":75600.5,"title":"dune.m4b","contentUrl":"/api/items/li_a/file/9001","mimeType":"audio/mp4","codec":"aac","metadata":{"ext":".m4b","size":645000000}}]}}

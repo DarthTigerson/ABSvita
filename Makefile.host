@@ -1,0 +1,36 @@
+# Host (macOS/Linux) build of the hardware-independent core + unit tests.
+#   make -f Makefile.host test
+CC      ?= cc
+BUILD   := build-host
+CFLAGS  := -std=gnu11 -O1 -g -Wall -Wextra -Wno-unused-parameter -Wno-sign-compare \
+           -fsanitize=address,undefined -fno-omit-frame-pointer \
+           -Isrc -Isrc/core -Ivendor/cjson -Ivendor/sonic -Ivendor/helix-aac -Ivendor/stb -Itests
+LDFLAGS := -fsanitize=address,undefined -lm
+
+CORE    := $(wildcard src/core/*.c)
+VENDOR  := vendor/cjson/cJSON.c vendor/sonic/sonic.c $(wildcard vendor/helix-aac/*.c)
+TESTS   := $(wildcard tests/*.c)
+OBJS    := $(patsubst %.c,$(BUILD)/%.o,$(CORE) $(VENDOR) $(TESTS))
+
+.PHONY: test clean fixtures
+test: $(BUILD)/tests_run fixtures
+	./$(BUILD)/tests_run
+
+fixtures:
+	@sh tests/gen_fixtures.sh
+
+$(BUILD)/tests_run: $(OBJS)
+	$(CC) $^ $(LDFLAGS) -o $@
+
+$(BUILD)/vendor/%.o: vendor/%.c
+	@mkdir -p $(dir $@)
+	$(CC) -std=gnu11 -O2 -g -w -fsanitize=address -Ivendor/helix-aac -Ivendor/cjson -Ivendor/sonic -c $< -o $@
+
+$(BUILD)/%.o: %.c
+	@mkdir -p $(dir $@)
+	$(CC) $(CFLAGS) -MMD -c $< -o $@
+
+-include $(OBJS:.o=.d)
+
+clean:
+	rm -rf $(BUILD)

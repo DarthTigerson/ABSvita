@@ -1,0 +1,3 @@
+{"user":{"id":"usr_1","username":"thomas","type":"root","token":"legacy","accessToken":"acc.123","refreshToken":"ref.456",
+"mediaProgress":[{"id":"mp1","libraryItemId":"li_b","episodeId":null,"duration":3600,"progress":0.5,"currentTime":1800.5,"isFinished":false,"lastUpdate":1760000000000}],
+"isActive":true},"userDefaultLibraryId":"lib_1","serverSettings":{"version":"2.31.0"},"Source":"docker"}
