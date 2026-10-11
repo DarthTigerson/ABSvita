@@ -11,8 +11,8 @@ your progress in sync with every other Audiobookshelf app.
   is there when you want it. The bar at the bottom always shows what each button does.
 - **Home, Library, Series, Authors, Search and Downloads** on one screen, with a mini player
   in the sidebar.
-- **Now Playing** with chapters, skip back/forward, speed (0.75x to 2x), a sleep timer and
-  screen-off listening.
+- **Now Playing** with chapters, skip back/forward, speed (0.75x to 2x), a sleep timer,
+  screen-off listening and background playback (see below).
 - **Downloads for offline listening.** Save books to the memory card from the book page
   (Download, with progress, pause and resume) and play them with no Wi-Fi. The Downloads
   section lists what's saved and how much space is left.
@@ -28,8 +28,16 @@ your progress in sync with every other Audiobookshelf app.
 <sub>Screenshots from the Vita3K emulator, showing public-domain [LibriVox](https://librivox.org)
 recordings and cover art.</sub>
 
-ABSvita plays while it is open. Turn the screen off from the player (SELECT) to save
-battery; audio keeps going and any button wakes the screen.
+Listening keeps going in the background:
+
+- **Screen off**: press SELECT in the player. The display turns off and audio keeps going;
+  any button wakes the screen.
+- **PS button**: leave for the LiveArea or other system screens and the book keeps playing.
+- **Power button**: a short press turns the screen off without stopping playback.
+
+While a book plays the Vita stays awake; when nothing is playing or downloading for
+10 minutes, ABSvita puts it to sleep. Closing ABSvita from its LiveArea saves your
+position first.
 
 ## Install
 
