@@ -95,7 +95,7 @@ int main(void) {
     app_init();
 
     uint64_t last = sceKernelGetProcessTimeWide();
-    for (;;) {
+    while (!sys_quit_requested()) {
         uint64_t now = sceKernelGetProcessTimeWide();
         float dt = (now - last) / 1e6f;
         last = now;
@@ -109,16 +109,24 @@ int main(void) {
         } else {
             app_update(&in, dt);
         }
+        bool busy = player_playing() || dl_busy(); /* stay awake while listening or downloading */
+        if (!sys_visible()) {
+            /* nothing to see: skip drawing and let the CPU idle */
+            sys_tick(busy, in.any || in.touching);
+            sceKernelDelayThread(50 * 1000);
+            continue;
+        }
         vita2d_start_drawing();
         vita2d_clear_screen();
         app_draw();
         vita2d_end_drawing();
         vita2d_common_dialog_update();
         vita2d_swap_buffers();
-        sys_tick(player_playing() || dl_busy()); /* stay awake while listening or downloading */
+        sys_tick(busy, in.any || in.touching);
     }
 
-    /* not reached: the system ends the app */
+    /* the system asked us to close: save the position and go */
+    dbg("quit requested");
     player_exit();
     engine_exit();
     vita2d_fini();

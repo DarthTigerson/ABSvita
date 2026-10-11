@@ -51,11 +51,12 @@ def bg():
     bd.ellipse([0, 0, 200 * S - 1, 200 * S - 1], fill=AMBER)
     book(bd, 100 * S, 102 * S, 70 * S, INK)
     big = big.resize((200, 200), Image.LANCZOS)
-    img.paste(big, (W - 280, 150), big)
-    f1 = ImageFont.truetype(FONT, 64)
-    f2 = ImageFont.truetype(FONT_REG, 26)
-    d.text((70, 170), "ABSvita", font=f1, fill=WHITE)
-    d.text((72, 258), "Audiobookshelf for PS Vita", font=f2, fill=SUB)
+    img.paste(big, (W - 250, 130), big)
+    # the system draws the start gate over x 280..560, y 140..300: keep text below it
+    f1 = ImageFont.truetype(FONT, 56)
+    f2 = ImageFont.truetype(FONT_REG, 24)
+    d.text((60, 340), "ABSvita", font=f1, fill=WHITE)
+    d.text((62, 414), "Audiobookshelf for PS Vita", font=f2, fill=SUB)
     return img
 
 

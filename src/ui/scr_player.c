@@ -34,7 +34,6 @@ static struct {
     bool chapters;
     int ch_focus;
     Scroll ch_sc;
-    bool screen_off;
 } S;
 
 void player_screen_enter(void) {
@@ -50,11 +49,6 @@ static void open_chapters(void) {
     S.ch_focus = player_chapter_index();
     if (S.ch_focus < 0) S.ch_focus = 0;
     S.ch_sc.y = S.ch_sc.target = S.ch_focus * 52.0f - 120 > 0 ? S.ch_focus * 52.0f - 120 : 0;
-}
-
-static void screen_off(void) {
-    S.screen_off = true;
-    sys_screen(false);
 }
 
 static void do_control(int k) {
@@ -139,8 +133,8 @@ static void on_tap_chapter(int i, int b) {
 }
 
 void player_screen_update(const Input *in, float dt) {
-    if (S.screen_off) {
-        if (in->any || in->touching) { S.screen_off = false; sys_screen(true); }
+    if (!sys_screen_on()) {
+        if (in->any || in->touching) sys_screen(true);
         return;
     }
     if (player_phase() == PL_FAILED || (!player_book() && player_phase() != PL_OPENING)) {
@@ -167,7 +161,7 @@ void player_screen_update(const Input *in, float dt) {
     if (in->repeat & B_L) player_skip(-g_cfg.skip_back);
     if (in->repeat & B_R) player_skip(g_cfg.skip_fwd);
     if (in->down & B_TRIANGLE) open_chapters();
-    if (in->down & B_SELECT) screen_off();
+    if (in->down & B_SELECT) sys_screen(false);
     int n = S.row == 0 ? 5 : P_COUNT;
     if (in->repeat & B_LEFT && S.col[S.row] > 0) S.col[S.row]--;
     if (in->repeat & B_RIGHT && S.col[S.row] + 1 < n) S.col[S.row]++;

@@ -34,6 +34,10 @@ if(_major LESS 10)
 endif()
 set(VITA_VERSION "${_major}.${_minor}${_patch}")
 set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d PARENTAL_LEVEL=1")
+# ATTRIBUTE: no communication zone (0x8000, the SDK default), keep running when
+# deactivated (0x8) and no system suspend (0x80000), so a book plays on in the
+# background and through the power button, as ElevenMPV-A does
+set(VITA_MKSFOEX_FLAGS "${VITA_MKSFOEX_FLAGS} -d ATTRIBUTE=0x88008")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -O2 -Wall -Wno-unused-parameter -Wno-sign-compare -std=gnu11")
